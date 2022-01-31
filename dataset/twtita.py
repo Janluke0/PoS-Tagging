@@ -4,7 +4,7 @@ import numpy as np
 import re
 import requests
 import functools
-_SCR = {
+_SRC = {
     'test':  "https://raw.githubusercontent.com/evalita2016/data/master/postwita/goldTESTset-2016_09_12.txt",
     'train': "https://raw.githubusercontent.com/evalita2016/data/master/postwita/goldDEVset-2016_09_05.txt"
 }
@@ -80,21 +80,43 @@ class TWITADS(Dataset):
 def flatten(t):
     return [item for sublist in t for item in sublist]
 
-def get_ds(name):
-    if name!="test" and name!="train":
+
+def get_ds(name, _dir=Path("twitads")):
+    _dir.mkdir(parents=True, exist_ok=True)
+    f = _dir/f"{name}.dat"
+
+    if not f.exists() and name not in _SRC:
         raise Exception("Invalid dataset")
 
-    f = Path("twitads")
-    f.mkdir(parents=True,exist_ok=True)
-    f /= f"{name}.dat"
-
     if not f.exists():
-        res = requests.get(_SCR[name])
+        res = requests.get(_SRC[name])
         if not res.ok:
             raise Exception("Error downloading dataset")
         f.write_bytes(res.content)
 
     return parse_TWITA(f)
+
+
+def write_ds(fname, ids, tweets, _dir=Path("twitads")):
+    assert len(ids) == len(tweets)
+    with (_dir/fname).open("w+", encoding='utf8') as f:
+        for i in range(len(ids)):
+            f.write(f"_____{ids[i]}_____\n")
+            for word, tag in tweets[i]:
+                f.write(f"{word}\t{tag}\n")
+            f.write("\n")
+
+
+def split_ds(ids, tweets, percentage=0.9, seed=42):
+    from random import Random
+    r = Random(seed)
+    resampled_A_ids = r.sample(ids, int(len(ids)*percentage))
+    resampled_B_ids = list(filter(lambda i: i not in resampled_A_ids, ids))
+    resampled_A_tweets = [tweets[i]
+                          for i in [ids.index(_id) for _id in resampled_A_ids]]
+    resampled_B_tweets = [tweets[i]
+                          for i in [ids.index(_id) for _id in resampled_B_ids]]
+    return (resampled_A_ids, resampled_A_tweets), (resampled_B_ids, resampled_B_tweets)
 
 def parse_TWITA(fname):
     fixes = {'ADV2':'ADP_A', 'STYM':'SYM', 'AD':'ADJ'}#fix errors in test
