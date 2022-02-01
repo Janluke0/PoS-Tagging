@@ -9,7 +9,7 @@ import torch
 from torch.utils.data import DataLoader
 from torch.nn.utils.rnn import pad_sequence
 
-import tqdm
+import tqdm.auto as tqdm
 
 from torch import nn
 
@@ -35,7 +35,7 @@ def collate_fn(batch):
 bpe = BPEmb(lang='it', vs=N_TOKENS)
 
 
-def mk_dl(special, tag_mode):
+def mk_dl(special, tag_mode, ds_names=['train', 'test']):
     if special == '#ow':
         def word_tokenizer(word): return [1, *bpe.encode_ids(word), 2]
     elif special == 'eow':
@@ -48,9 +48,9 @@ def mk_dl(special, tag_mode):
     def transformer(tkns, tags): return (
         torch.tensor(tkns), torch.tensor(tags).long())
 
-    ds_train = TWITADS('train', word_tokenizer,
+    ds_train = TWITADS(ds_names[0], word_tokenizer,
                        transform=transformer, tag_mode=tag_mode)
-    ds_test = TWITADS('test', word_tokenizer,
+    ds_test = TWITADS(ds_names[1], word_tokenizer,
                       transform=transformer, tag_mode=tag_mode)
     return (
         ds_train.n_tags,
@@ -61,12 +61,12 @@ def mk_dl(special, tag_mode):
     )
 
 
-def mk_from_key(key):
+def mk_from_key(key, ds_names=['train', 'test']):
     is_bi, l_layers, hid_dim, o_layers, special_tkns, tg_mode = key.split('_')
 
     is_bi, l_layers, hid_dim, o_layers = is_bi == 'bi', int(
         l_layers), int(hid_dim), int(o_layers)
-    n_tags, dl_tr, dl_te = mk_dl(special_tkns, tg_mode)
+    n_tags, dl_tr, dl_te = mk_dl(special_tkns, tg_mode, ds_names)
     m = LSTMTagger(
         N_TOKENS,
         n_tags,
