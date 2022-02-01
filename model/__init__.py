@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 from torch import nn, optim
 
 from PIL import Image
-import tqdm
+import tqdm.auto as tqdm
 import torch
 import numpy as np
 
@@ -41,7 +41,7 @@ def train_model(model, dl_train, dl_test, cuda=False, lr=0.001, epochs=10, show_
         losses.append(los)
         accuracies.append(acc)
         # show epoch results
-        # pbar.set_description(f"Loss:{los}\tAccurancy:{acc}")
+        pbar.set_description(f"Loss:{los}\tAccurancy:{acc}")
         if show_plots:
             plt.clf()
             plt.subplot(121)
@@ -57,11 +57,6 @@ def train_model(model, dl_train, dl_test, cuda=False, lr=0.001, epochs=10, show_
 
     if show_plots:
         plt.ioff()
-        fig = plt.gcf()
-        img = Image.frombytes(
-            'RGB', fig.canvas.get_width_height(), fig.canvas.tostring_rgb())
-        plt.clf()
-        return losses, accuracies, img
 
     return losses, accuracies
 
