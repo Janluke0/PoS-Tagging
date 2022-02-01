@@ -17,7 +17,7 @@ import numpy as np
 
 from dataset.twtita import TWITADS
 from model.lstm import LSTMTagger
-from model import train_model, eval_model, predict_all
+from model import eval_model
 from pprint import pprint
 from sklearn.metrics import f1_score, explained_variance_score
 from scipy.optimize import curve_fit
@@ -81,6 +81,12 @@ def mk_from_key(key):
 
 
 def compute_alpha(fname):
+    """
+        A made-up early performace metric:
+            Assuming that loss go like an exp(-x/alpha)
+            a lower value of alpha mean that is closer to convergence.
+            Alpha is estimated applying non-linear least square
+    """
     def curve(x, alpha):
         return np.exp(-x/alpha)
     with open(fname, 'r') as f:
@@ -100,10 +106,15 @@ report_file = models_dir/"lstm_grid.csv"
 loss_function = nn.NLLLoss()
 
 with report_file.open("w+") as f:
-    f.write("key,loss,accuracy,f1,explained_variance,alpha")
+    f.write("key,is_bi,lstm_layers,lstm_hidden_dim,out_layers,special_tokens,tag_mode,loss,accuracy,f1,explained_variance,alpha\n")
     for file in tqdm.tqdm(models_dir.iterdir()):
         if file.parts[-1].endswith('.pth'):
             k = file.parts[-1].replace('.pth', '')
+            is_bi, l_layers, hid_dim, o_layers, special_tkns, tg_mode = k.split(
+                '_')
+
+            is_bi, l_layers, hid_dim, o_layers = is_bi == 'bi', int(
+                l_layers), int(hid_dim), int(o_layers)
             model, _, dl_test = mk_from_key(k)
             model.load_state_dict(torch.load(file))
             model.eval()
@@ -114,5 +125,6 @@ with report_file.open("w+") as f:
             evs = explained_variance_score(
                 y_true, y_pred, multioutput='variance_weighted')
             alpha = compute_alpha(models_dir/f"{k}.csv")
-            f.write(",".join(map(str, (k, los, acc, f1, evs, alpha))))
+            f.write(",".join(map(str, (k, is_bi, l_layers, hid_dim,
+                    o_layers, special_tkns, tg_mode, los, acc, f1, evs, alpha))))
             f.write("\n")
