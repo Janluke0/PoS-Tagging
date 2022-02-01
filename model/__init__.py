@@ -99,7 +99,7 @@ def eval_model(model, dl_test, cuda, loss_function, return_y=False, return_score
                 scores.append(tag_scores[y != 100, :])
     acc = torch.cat(acc).mean().item()
     los = np.array(los).mean()
-    out = acc, los
+    out = los, acc
     if return_y:
         out = (*out, torch.cat(y_true).cpu().numpy(),
                torch.cat(pred).cpu().numpy())
