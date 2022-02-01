@@ -33,7 +33,7 @@ class ItBERTUncasedPos(nn.Module):
     """
 
     def __init__(self, nlabels):
-        super(ItBERTCasedPos, self).__init__()
+        super(ItBERTUncasedPos, self).__init__()
         self.nlabels = nlabels
         self.pretrained = AutoModelForTokenClassification.from_pretrained(
             "dbmdz/bert-base-italian-uncased")
