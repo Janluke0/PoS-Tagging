@@ -79,7 +79,7 @@ class ItELECTRAXXLCasedPos(nn.Module):
     """
 
     def __init__(self, nlabels):
-        super(ItELECTRACasedPos, self).__init__()
+        super(ItELECTRAXXLCasedPos, self).__init__()
         self.nlabels = nlabels
         self.pretrained = AutoModelForTokenClassification.from_pretrained(
             "dbmdz/electra-base-italian-xxl-cased-discriminator")
