@@ -48,3 +48,49 @@ class ItBERTUncasedPos(nn.Module):
     @staticmethod
     def tokenizer():
         return AutoTokenizer.from_pretrained("dbmdz/bert-base-italian-uncased")
+
+
+class ItELECTRACasedPos(nn.Module):
+    """
+        https://huggingface.co/dbmdz/electra-base-italian-mc4-cased-discriminator
+    """
+
+    def __init__(self, nlabels):
+        super(ItELECTRACasedPos, self).__init__()
+        self.nlabels = nlabels
+        self.pretrained = AutoModelForTokenClassification.from_pretrained(
+            "dbmdz/electra-base-italian-mc4-cased-discriminator")
+        self.pretrained.classifier = nn.Linear(
+            self.pretrained.classifier.in_features, self.nlabels)
+
+    def forward(self, *args, **kwargs):
+        scores = self.pretrained(*args, **kwargs)
+        scores = scores.logits
+        return F.log_softmax(scores, dim=1)
+
+    @staticmethod
+    def tokenizer():
+        return AutoTokenizer.from_pretrained("dbmdz/electra-base-italian-mc4-cased-discriminator")
+
+
+class ItELECTRAXXLCasedPos(nn.Module):
+    """
+        https://huggingface.co/dbmdz/electra-base-italian-xxl-cased-discriminator
+    """
+
+    def __init__(self, nlabels):
+        super(ItELECTRACasedPos, self).__init__()
+        self.nlabels = nlabels
+        self.pretrained = AutoModelForTokenClassification.from_pretrained(
+            "dbmdz/electra-base-italian-xxl-cased-discriminator")
+        self.pretrained.classifier = nn.Linear(
+            self.pretrained.classifier.in_features, self.nlabels)
+
+    def forward(self, *args, **kwargs):
+        scores = self.pretrained(*args, **kwargs)
+        scores = scores.logits
+        return F.log_softmax(scores, dim=1)
+
+    @staticmethod
+    def tokenizer():
+        return AutoTokenizer.from_pretrained("dbmdz/electra-base-italian-xxl-cased-discriminator")
