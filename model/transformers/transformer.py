@@ -44,7 +44,7 @@ class MultiHeadAttention(nn.Module):
         heads_res = []
         for head in self.heads:
             heads_res.append(head(query,key,value,mask))
-        concat = torch.concat(heads_res, dim=-1)
+        concat = torch.cat(heads_res, dim=-1)
         return self.linear(concat)
 
 def addNorm(a, b,**kwargs):
