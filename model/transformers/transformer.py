@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 import torch.nn.functional as F
-from attention import PositionalEncoding1d
+from .attention import PositionalEncoding1d
 
 from math import sqrt
 def scaled_dot_attention(query,key,value,mask=None, d_k=None):

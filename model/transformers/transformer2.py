@@ -1,9 +1,9 @@
 import torch
 from torch import nn
 import torch.nn.functional as F
-from attention import PositionalEncoding1d
+from .attention import PositionalEncoding1d
 
-from attention import Attention
+from .attention import Attention
 class MultiHeadAttention(nn.Module):
     def __init__(self, key_dim, value_dim, num_heads):
         super(type(self),self).__init__()
@@ -44,7 +44,7 @@ class EncoderLayer(nn.Module):
     def __init__(self, model_dim, num_heads):
         super(type(self),self).__init__()
         self.self_attention = MultiHeadAttention(model_dim, model_dim, num_heads)
-        self.ffn       = FFN(model_dim)
+        self.ffn            = FFN(model_dim)
 
     def forward(self, x):
         ffn_in = addNorm(x, self.self_attention(x,x,x,None))
