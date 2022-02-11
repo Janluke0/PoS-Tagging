@@ -7,12 +7,19 @@ import torch
 import numpy as np
 
 
-def train_model(model, dl_train, dl_test, cuda=False, lr=0.001, epochs=10, show_plots=False):
+def train_model(
+        model, dl_train, dl_test,
+        cuda=False, lr=0.001,
+        epochs=10, show_plots=False,
+        loss_factory=nn.NLLLoss, loss_parms={},
+        optimizer_factory=optim.SGD, optimizer_parms={}):
+
     if show_plots:
         plt.ion()
         plt.show(block=False)
-    loss_function = nn.NLLLoss()
-    optimizer = optim.SGD(model.parameters(), lr=lr)
+
+    loss_function = loss_factory(**loss_parms)
+    optimizer = optimizer_factory(model.parameters(), lr=lr, **optimizer_parms)
 
     if cuda:
         model = model.cuda()
@@ -41,7 +48,7 @@ def train_model(model, dl_train, dl_test, cuda=False, lr=0.001, epochs=10, show_
         losses.append(los)
         accuracies.append(acc)
         # show epoch results
-        pbar.set_description(f"Loss:{los}\tAccurancy:{acc}")
+        pbar.set_description(f"Loss:{los:.4f}\tAccurancy:{acc:.4f}")
         if show_plots:
             plt.clf()
             plt.subplot(121)
