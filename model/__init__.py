@@ -1,11 +1,62 @@
 import matplotlib.pyplot as plt
 from torch import nn, optim
+from torch.nn import functional as F
 
 from PIL import Image
 import tqdm.auto as tqdm
 import torch
 import numpy as np
 
+import pytorch_lighting as pl
+import torchmetrics
+
+
+class TokenOfSeqClassifier(pl.LightningModule):
+    def __init__(self,
+                 module: nn.Module,
+                 lr=1e-3, weight_decay=1e-2, amsgrad=False  # optim params
+                 ):
+        self.save_hyperparameters()
+        self.module = module
+        #TODO: accurancy removing [EPAD],[BOS],[EOS] tags
+        #self.val_pure_acc  = torchmetrics.Accuracy(ignore_index=-100,average='weighted')
+        self.val_acc = torchmetrics.Accuracy(
+            ignore_index=-100, average='weighted')
+        self.val_f1 = torchmetrics.F1Score(ignore_index=-100)
+
+        #self.test_acc = torchmetrics.Accuracy(ignore_index=-100,average='weighted')
+        #self.test_f1  = torchmetrics.F1Score(ignore_index=-100)
+
+    def forward(self, x):
+        return self.module(x)
+
+    def configure_optimizers(self):
+        return optim.AdamW(self.model.parameters(),
+                           lr=self.hparams.lr,
+                           weight_decay=self.hparms.weight_decay,
+                           amsgrad=self.hparams.amsgrad)
+
+    def training_step(self, train_batch, batch_idx):
+        x, y = train_batch
+        pred = self.model(x)
+        loss = F.nll_loss(pred.transpose(1, 2), y)
+        self.log('train_loss', loss)
+        return loss
+
+    def validation_step(self, val_batch, batch_idx):
+        x, y = val_batch
+        logits = self.model(x).transpose(1, 2)
+
+        loss = F.nll_loss(logits, y)
+        self.log('val_loss', loss, on_epoch=True)
+
+        self.val_acc(logits, y)
+        self.log('val_acc', self.val_acc, on_epoch=True)
+
+        self.val_f1(logits, y)
+        self.log('val_f1', self.val_f1, on_epoch=True)
+
+        return loss
 
 def train_model(
         model, dl_train, dl_test,
