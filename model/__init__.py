@@ -16,6 +16,7 @@ class TokenOfSeqClassifier(pl.LightningModule):
                  module: nn.Module,
                  lr=1e-3, weight_decay=1e-2, amsgrad=False  # optim params
                  ):
+        super(type(self), self).__init__()
         self.module = module
         #TODO: accurancy removing [EPAD],[BOS],[EOS] tags
         #self.val_pure_acc  = torchmetrics.Accuracy(ignore_index=-100,average='weighted')
