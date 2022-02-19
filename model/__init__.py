@@ -7,7 +7,7 @@ import tqdm.auto as tqdm
 import torch
 import numpy as np
 
-import pytorch_lighting as pl
+import pytorch_lightning as pl
 import torchmetrics
 
 
