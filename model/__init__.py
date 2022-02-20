@@ -11,33 +11,31 @@ import pytorch_lightning as pl
 import torchmetrics
 
 
-import pytorch_lightning as pl
-import torchmetrics
-
-
 class TokenOfSeqClassifier(pl.LightningModule):
     def __init__(self,
                  model: nn.Module, nclass=29,
                  lr=1e-3, weight_decay=1e-2, amsgrad=False,  # optim params
-                 ignore_indices=[]#metrics params
+                 ignore_indices=[]  # metrics params
                  ):
         super(type(self), self).__init__()
         self.model = model
         self.pad_index = nclass - 1
 
-        #TODO: accurancy removing [EPAD],[BOS],[EOS] tags
+        # TODO: accurancy removing [EPAD],[BOS],[EOS] tags
         #self.val_pure_acc  = torchmetrics.Accuracy(ignore_index=-100,average='weighted')
-        self.val_acc = torchmetrics.Accuracy(num_classes=nclass, average='weighted', mdmc_average='global',ignore_index=self.pad_index)
-        self.val_f1 = torchmetrics.F1(mdmc_average='global',ignore_index=self.pad_index)
+        self.val_acc = torchmetrics.Accuracy(
+            num_classes=nclass, average='weighted', mdmc_average='global', ignore_index=self.pad_index)
+        self.val_f1 = torchmetrics.F1(
+            mdmc_average='global', ignore_index=self.pad_index)
 
         #self.test_acc = torchmetrics.Accuracy(ignore_index=-100,average='weighted')
         #self.test_f1  = torchmetrics.F1Score(ignore_index=-100)
 
         self.save_hyperparameters('lr', 'weight_decay', 'amsgrad')
 
-        self.val_metrics = {'f1':[],'accuracy':[],'loss':[]}
+        self.val_metrics = {'f1': [], 'accuracy': [], 'loss': []}
 
-        self.train_metrics = {'loss':[]}
+        self.train_metrics = {'loss': []}
 
     def forward(self, x):
         return self.module(x)
@@ -63,17 +61,38 @@ class TokenOfSeqClassifier(pl.LightningModule):
         self.log('val_loss', loss, on_epoch=True)
 
         self.val_acc(logits, y)
-        self.log('val_acc', self.val_acc, on_epoch=True, prog_bar=True, logger=True)
+        self.log('val_acc', self.val_acc, on_epoch=True,
+                 prog_bar=True, logger=True)
 
         self.val_f1(logits, y)
-        self.log('val_f1', self.val_f1, on_epoch=True, prog_bar=True, logger=True)
+        self.log('val_f1', self.val_f1, on_epoch=True,
+                 prog_bar=True, logger=True)
 
         return loss
-    def validation_epoch_end(self,outputs):
+
+    def validation_epoch_end(self, outputs):
         super().training_epoch_end(outputs)
         self.val_metrics['accuracy'].append(self.val_acc.compute().item())
-        self.val_metrics['f1'].append(self.val_f1.compute().item())
-        self.val_metrics['loss'].append(outputs[-1].item())
+        self.val_metrics['loss'].append(outputs['loss'][-1].item())
+
+
+class MyAccuracy(torchmetrics.Metric):
+    def __init__(self, dist_sync_on_step=False):
+        super().__init__(dist_sync_on_step=dist_sync_on_step)
+
+        self.add_state("correct", default=torch.tensor(0),
+                       dist_reduce_fx="sum")
+        self.add_state("total", default=torch.tensor(0), dist_reduce_fx="sum")
+
+    def update(self, preds: torch.Tensor, target: torch.Tensor):
+        preds, target = self._input_format(preds, target)
+        assert preds.shape == target.shape
+
+        self.correct += torch.sum(preds == target)
+        self.total += target.numel()
+
+    def compute(self):
+        return self.correct.float() / self.total
 
 
 def train_model(
@@ -177,3 +196,8 @@ def eval_model(model, dl_test, cuda, loss_function, return_y=False, return_score
     if return_scores:
         out = (*out, torch.cat(scores).cpu().numpy())
     return out
+
+def pure_accuracy(model,dl):
+    _,_, y_true, y_pred = eval_model(model,dl,torch.cuda.is_available(),nn.NLLLoss(), return_y=True)
+    m =  (y_true != _TAGS['[EPAD]'])&(y_true != _TAGS['[BOS]'])&(y_true != _TAGS['[EOS]'])&(y_true != _TAGS['[PAD]'])
+    return (y_pred[m]==y_true[m]).mean()
