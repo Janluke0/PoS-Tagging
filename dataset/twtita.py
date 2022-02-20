@@ -66,13 +66,13 @@ class TWITADS(Dataset):
             tags = [np.array([t]*len(w_tkns)) for w_tkns, t in tweet]
         elif self.tag_mode=='first':
             tags = [np.array(
-                [t, *[self._TAGS['[PAD]']]*(len(w_tkns)-1)]
+                [t, *[self._TAGS['[EPAD]']]*(len(w_tkns)-1)]
                 ) for w_tkns, t in tweet]
         elif self.tag_mode=='last':
-            tags = [np.array([*[self._TAGS['[PAD]']]*(len(w_tkns)-1), t]) for w_tkns, t in tweet]
+            tags = [np.array([*[self._TAGS['[EPAD]']]*(len(w_tkns)-1), t]) for w_tkns, t in tweet]
         elif self.tag_mode=='terminal':
             tags = [np.array(
-                    [t, *[self._TAGS['[PAD]']]*(len(w_tkns)-2), t]
+                    [t, *[self._TAGS['[EPAD]']]*(len(w_tkns)-2), t]
                     if len(w_tkns)>1 else [t]
                 ) for w_tkns, t in tweet]
 
