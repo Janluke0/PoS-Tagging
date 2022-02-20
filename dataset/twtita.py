@@ -24,7 +24,7 @@ class TWITADS(Dataset):
              'VERB': 21, 'VERB_CLIT': 22, 'X': 23,
              '[BOS]': 24, '[EOS]': 25,
              '[EPAD]': 26,  # Explicit PAD
-             '[UNS0]': 27, '[UNS1]': 28, '[UNS2]': 29
+             '[MASK]': 27, '[UNS1]': 28, '[UNS2]': 29
              }
 
     def __init__(self, dataset, word_tokenizer, tag_mode="all", transform=None):
@@ -88,6 +88,7 @@ class TWITADS(Dataset):
 def tokenize_and_align_labels(tokenizer, tokens, tags, epad_subtokens=True):
     tokens = [" "+w if i > 0 else w for i, w in enumerate(list(tokens))]
     ##TODO : unify all tokenizers
+    add_special_token = True
     try:
         tokenized_inputs = tokenizer.encode(tokens, is_pretokenized=True)
         word_ids = tokenized_inputs.word_ids
@@ -96,12 +97,15 @@ def tokenize_and_align_labels(tokenizer, tokens, tags, epad_subtokens=True):
         tmp = tokenizer(tokens, is_split_into_words=True,
                         add_special_tokens=False,
                         return_attention_mask=False, return_token_type_ids=False)
+        add_special_token = False
         word_ids = tmp.word_ids()
         ids = tmp['input_ids']
 
     # Map tokens to their respective word.
     previous_word_idx = None
-    label_ids = [TWITADS._TAGS['[BOS]']]
+    label_ids = []
+    if add_special_token:
+        label_ids.append(TWITADS._TAGS['[BOS]'])
     for word_idx in word_ids:
         if word_idx is None:
             pass
@@ -110,7 +114,8 @@ def tokenize_and_align_labels(tokenizer, tokens, tags, epad_subtokens=True):
         else:
             label_ids.append(TWITADS._TAGS['[EPAD]'])
         previous_word_idx = word_idx
-    label_ids.append(TWITADS._TAGS['[EOS]'])
+    if add_special_token:
+        label_ids.append(TWITADS._TAGS['[EOS]'])
 
     return torch.tensor(ids), torch.tensor(label_ids)
 
