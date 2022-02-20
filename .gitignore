@@ -2,3 +2,5 @@ trained/*_*_*_*_*.csv
 trained/*_*_*_*_*.pth
 settings.json
 *.pyc
+*.html
+*.download
