@@ -11,26 +11,33 @@ import pytorch_lightning as pl
 import torchmetrics
 
 
+import pytorch_lightning as pl
+import torchmetrics
+
+
 class TokenOfSeqClassifier(pl.LightningModule):
     def __init__(self,
                  model: nn.Module, nclass=29,
-                 lr=1e-3, weight_decay=1e-2, amsgrad=False  # optim params
+                 lr=1e-3, weight_decay=1e-2, amsgrad=False,  # optim params
+                 ignore_indices=[]#metrics params
                  ):
         super(type(self), self).__init__()
         self.model = model
-        self.ignore_label = nclass - 1
+        self.pad_index = nclass - 1
 
-        # TODO: accurancy removing [EPAD],[BOS],[EOS] tags
+        #TODO: accurancy removing [EPAD],[BOS],[EOS] tags
         #self.val_pure_acc  = torchmetrics.Accuracy(ignore_index=-100,average='weighted')
-        self.val_acc = torchmetrics.Accuracy(
-            num_classes=nclass, average='weighted', mdmc_average='global', ignore_index=self.ignore_label)
-        self.val_f1 = torchmetrics.F1(
-            mdmc_average='global', ignore_index=self.ignore_label)
+        self.val_acc = torchmetrics.Accuracy(num_classes=nclass, average='weighted', mdmc_average='global',ignore_index=self.pad_index)
+        self.val_f1 = torchmetrics.F1(mdmc_average='global',ignore_index=self.pad_index)
 
         #self.test_acc = torchmetrics.Accuracy(ignore_index=-100,average='weighted')
         #self.test_f1  = torchmetrics.F1Score(ignore_index=-100)
 
         self.save_hyperparameters('lr', 'weight_decay', 'amsgrad')
+
+        self.val_metrics = {'f1':[],'accuracy':[],'loss':[]}
+
+        self.train_metrics = {'loss':[]}
 
     def forward(self, x):
         return self.module(x)
@@ -44,8 +51,7 @@ class TokenOfSeqClassifier(pl.LightningModule):
     def training_step(self, train_batch, batch_idx):
         x, y = train_batch
         pred = self.model(x)
-        loss = F.nll_loss(pred.transpose(1, 2), y,
-                          ignore_index=self.ignore_label)
+        loss = F.nll_loss(pred.transpose(1, 2), y, ignore_index=self.pad_index)
         self.log('train_loss', loss)
         return loss
 
@@ -53,16 +59,21 @@ class TokenOfSeqClassifier(pl.LightningModule):
         x, y = val_batch
         logits = self.model(x).transpose(1, 2)
 
-        loss = F.nll_loss(logits, y, ignore_index=self.ignore_label)
+        loss = F.nll_loss(logits, y, ignore_index=self.pad_index)
         self.log('val_loss', loss, on_epoch=True)
 
         self.val_acc(logits, y)
-        self.log('val_acc', self.val_acc, on_epoch=True)
+        self.log('val_acc', self.val_acc, on_epoch=True, prog_bar=True, logger=True)
 
         self.val_f1(logits, y)
-        self.log('val_f1', self.val_f1, on_epoch=True)
+        self.log('val_f1', self.val_f1, on_epoch=True, prog_bar=True, logger=True)
 
         return loss
+    def validation_epoch_end(self,outputs):
+        super().training_epoch_end(outputs)
+        self.val_metrics['accuracy'].append(self.val_acc.compute().item())
+        self.val_metrics['f1'].append(self.val_f1.compute().item())
+        self.val_metrics['loss'].append(outputs[-1].item())
 
 
 def train_model(
