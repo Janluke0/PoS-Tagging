@@ -1,4 +1,6 @@
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, DataLoader
+from torch.nn.utils.rnn import pad_sequence
+import torch
 from pathlib import Path
 import numpy as np
 import re
@@ -11,13 +13,19 @@ _SRC = {
 
 
 class TWITADS(Dataset):
-    _TAGS = {'ADJ': 0, 'ADP': 1, 'ADP_A': 2, 'ADV': 3,
-            'AUX': 4, 'CONJ': 5, 'DET': 6, 'EMO': 7,
-            'HASHTAG': 8, 'INTJ': 9, 'MENTION': 10,
-            'NOUN': 11, 'NUM': 12, 'PART': 13, 'PRON': 14,
-            'PROPN': 15, 'PUNCT': 16, 'SCONJ': 17, 'SYM': 18,
-            'URL': 19, 'VERB': 20, 'VERB_CLIT': 21, 'X': 22,
-            '[PAD]':-100}
+    _TAGS = {'[PAD]': 0,  # PAD To be ignored
+             'ADJ': 1, 'ADP': 2,
+             'ADP_A': 3, 'ADV': 4, 'AUX': 5,
+             'CONJ': 6, 'DET': 7, 'EMO': 8,
+             'HASHTAG': 9, 'INTJ': 10, 'MENTION': 11,
+             'NOUN': 12, 'NUM': 13, 'PART': 14,
+             'PRON': 15, 'PROPN': 16, 'PUNCT': 17,
+             'SCONJ': 18, 'SYM': 19, 'URL': 20,
+             'VERB': 21, 'VERB_CLIT': 22, 'X': 23,
+             '[BOS]': 24, '[EOS]': 25,
+             '[EPAD]': 26,  # Explicit PAD
+             '[UNS0]': 27, '[UNS1]': 28, '[UNS2]': 29
+             }
 
     def __init__(self, dataset, word_tokenizer, tag_mode="all", transform=None):
         """
@@ -76,6 +84,56 @@ class TWITADS(Dataset):
 
         return tokens,tags
 
+
+def tokenize_and_align_labels(tokenizer, tokens, tags, epad_subtokens=True):
+    tokens = [" "+w if i > 0 else w for i, w in enumerate(list(tokens))]
+    ##TODO : unify all tokenizers
+    try:
+        tokenized_inputs = tokenizer.encode(tokens, is_pretokenized=True)
+        word_ids = tokenized_inputs.word_ids
+        ids = tokenized_inputs.ids
+    except:
+        tmp = tokenizer(tokens, is_split_into_words=True,
+                        add_special_tokens=False,
+                        return_attention_mask=False, return_token_type_ids=False)
+        word_ids = tmp.word_ids()
+        ids = tmp['input_ids']
+
+    # Map tokens to their respective word.
+    previous_word_idx = None
+    label_ids = [TWITADS._TAGS['[BOS]']]
+    for word_idx in word_ids:
+        if word_idx is None:
+            pass
+        elif word_idx != previous_word_idx or not epad_subtokens:
+            label_ids.append(tags[word_idx])
+        else:
+            label_ids.append(TWITADS._TAGS['[EPAD]'])
+        previous_word_idx = word_idx
+    label_ids.append(TWITADS._TAGS['[EOS]'])
+
+    return torch.tensor(ids), torch.tensor(label_ids)
+
+
+def collate_fn(batch):
+    tokens, tags = zip(*batch)
+    return pad_sequence(tokens, batch_first=True), pad_sequence(tags, batch_first=True)
+
+
+def mk_dataloaders(tknzr, ds_names=['train', 'test'], batch_size=64, shuffle=True):
+    def transformer(tkns, tags):
+        return tokenize_and_align_labels(tknzr, tkns, tags)
+
+    def word_tokenizer(w): return [w]
+
+    dataloaders = []
+
+    for name in ds_names:
+        ds = TWITADS(name, word_tokenizer,
+                     transform=transformer)
+        dataloaders.append(DataLoader(ds, shuffle=shuffle,
+                                      batch_size=batch_size, collate_fn=collate_fn))
+    return (ds.n_tags, *dataloaders)
 
 def flatten(t):
     return [item for sublist in t for item in sublist]
