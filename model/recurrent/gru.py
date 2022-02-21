@@ -1,15 +1,18 @@
 from torch import nn
 import torch.nn.functional as F
-from positional_encodings import PositionalEncoding1D, Summer
+from model.recurrent import OneHot
 
 
 class TokenOfSeqClassifier(nn.Module):
-  def __init__(self, d_input, d_model, d_output, d_hidden=None, dropout=0.05):
+  def __init__(self, d_input, d_model, d_output, d_hidden=None, dropout=0.05, add_embedding_projection=False):
     super(type(self), self).__init__()
     d_hidden = d_hidden or d_model*2
 
-    self.embedding = nn.GRU(
-        d_input, d_model//2, batch_first=True, bidirectional=True)
+    self.embedding = nn.Embedding(d_input,d_model) if add_embedding_projection else OneHot(d_input)
+
+    self.in_gru = nn.GRU(
+        d_model if add_embedding_projection else d_input,
+        d_model//2, batch_first=True, bidirectional=True)
 
     self.out_gru = nn.GRU(
         d_model, d_hidden//2, batch_first=True, bidirectional=True)
@@ -20,8 +23,8 @@ class TokenOfSeqClassifier(nn.Module):
     )
 
   def forward(self, x):
-    emb, _ = self.embedding(
-        F.one_hot(x, num_classes=self.embedding.input_size).float())
+    emb    = self.embedding(x)
+    emb, _ = self.in_gru(emb)
     scores, _ = self.out_gru(emb)
     scores = self.clf(scores)
     return F.log_softmax(scores, dim=-1)
