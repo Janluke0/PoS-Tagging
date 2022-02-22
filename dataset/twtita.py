@@ -6,6 +6,8 @@ import numpy as np
 import re
 import requests
 import functools
+from random import Random
+
 _SRC = {
     'test':  "https://raw.githubusercontent.com/evalita2016/data/master/postwita/goldTESTset-2016_09_12.txt",
     'train': "https://raw.githubusercontent.com/evalita2016/data/master/postwita/goldDEVset-2016_09_05.txt"
@@ -85,9 +87,7 @@ class TWITADS(Dataset):
         return tokens,tags
 
 
-def tokenize_and_align_labels(tokenizer, tokens, tags, epad_subtokens=True):
-    tokens = [" "+w if i > 0 else w for i, w in enumerate(list(tokens))]
-    ##TODO : unify all tokenizers
+def tokenize(tokenizer, tokens):
     add_special_token = True
     try:
         tokenized_inputs = tokenizer.encode(tokens, is_pretokenized=True)
@@ -100,7 +100,17 @@ def tokenize_and_align_labels(tokenizer, tokens, tags, epad_subtokens=True):
         add_special_token = False
         word_ids = tmp.word_ids()
         ids = tmp['input_ids']
+    return word_ids, ids, add_special_token
 
+
+def tokenize_and_align_labels(tokenizer,
+                              tokens,
+                              tags,
+                              epad_subtokens=True,
+                              align_labels=True):
+    tokens = [" " + w if i > 0 else w for i, w in enumerate(list(tokens))]
+
+    word_ids, ids, add_special_token = tokenize(tokenizer, tokens)
     # Map tokens to their respective word.
     previous_word_idx = None
     label_ids = []
@@ -111,7 +121,7 @@ def tokenize_and_align_labels(tokenizer, tokens, tags, epad_subtokens=True):
             pass
         elif word_idx != previous_word_idx or not epad_subtokens:
             label_ids.append(tags[word_idx])
-        else:
+        elif align_labels:
             label_ids.append(TWITADS._TAGS['[EPAD]'])
         previous_word_idx = word_idx
     if add_special_token:
@@ -125,9 +135,16 @@ def collate_fn(batch):
     return pad_sequence(tokens, batch_first=True), pad_sequence(tags, batch_first=True)
 
 
-def mk_dataloaders(tknzr, ds_names=['train', 'test'], batch_size=64, shuffle=True):
+def mk_dataloaders(tknzr,
+                   ds_names=['train', 'test'],
+                   batch_size=64,
+                   shuffle=True,
+                   align_labels=True,
+                   epad_subtokens=True):
+
     def transformer(tkns, tags):
-        return tokenize_and_align_labels(tknzr, tkns, tags)
+        return tokenize_and_align_labels(tknzr, tkns, tags, epad_subtokens,
+                                         align_labels)
 
     def word_tokenizer(w): return [w]
 
@@ -171,7 +188,6 @@ def write_ds(fname, ids, tweets, _dir=Path("twitads")):
 
 
 def split_ds(ids, tweets, percentage=0.9, seed=42):
-    from random import Random
     r = Random(seed)
     resampled_A_ids = r.sample(ids, int(len(ids)*percentage))
     resampled_B_ids = list(filter(lambda i: i not in resampled_A_ids, ids))
