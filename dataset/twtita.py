@@ -143,11 +143,12 @@ def mk_dataloaders(tknzr,
                    batch_size=64,
                    shuffle=True,
                    align_labels=True,
-                   epad_subtokens=True):
+                   epad_subtokens=True,
+                   add_final_pad=False):
 
     def transformer(tkns, tags):
         return tokenize_and_align_labels(tknzr, tkns, tags, epad_subtokens,
-                                         align_labels)
+                                         align_labels, add_final_pad)
 
     def word_tokenizer(w): return [w]
 
