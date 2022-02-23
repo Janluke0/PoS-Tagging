@@ -12,14 +12,19 @@ import torchmetrics
 
 
 class TokenOfSeqClassifier(pl.LightningModule):
-    def __init__(self,
-                 model: nn.Module, nclass=29,
-                 lr=1e-3, weight_decay=1e-2, amsgrad=False,  # optim params
-                 label_idx_to_ignore=[]  # metrics params
-                 ):
+    def __init__(
+            self,
+            model: nn.Module,
+            nclass=29,
+            pad_index=0,
+            lr=1e-3,
+            weight_decay=1e-2,
+            amsgrad=False,  # optim params
+            label_idx_to_ignore=[]  # metrics params
+    ):
         super(type(self), self).__init__()
         self.model = model
-        self.pad_index = nclass - 1
+        self.pad_index = pad_index
 
         # TODO: accurancy removing [EPAD],[BOS],[EOS] tags
         #self.val_pure_acc  = torchmetrics.Accuracy(ignore_index=-100,average='weighted')
