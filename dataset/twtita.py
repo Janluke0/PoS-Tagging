@@ -107,7 +107,8 @@ def tokenize_and_align_labels(tokenizer,
                               tokens,
                               tags,
                               epad_subtokens=True,
-                              align_labels=True):
+                              align_labels=True,
+                              add_final_pad=False):
     tokens = [" " + w if i > 0 else w for i, w in enumerate(list(tokens))]
 
     word_ids, ids, add_special_token = tokenize(tokenizer, tokens)
@@ -126,6 +127,8 @@ def tokenize_and_align_labels(tokenizer,
         previous_word_idx = word_idx
     if add_special_token:
         label_ids.append(TWITADS._TAGS['[EOS]'])
+    if add_final_pad:
+        label_ids.append(TWITADS._TAGS['[PAD]'])
 
     return torch.tensor(ids), torch.tensor(label_ids)
 
