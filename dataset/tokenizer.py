@@ -101,14 +101,14 @@ class BPEmbWrapper:
         self.bpemb = BPEmb(*args, **kwargs)
 
     def encode(self, words, is_pretokenized=True):
-        word_ids, ids = [self.bpemb.BOS], [None]
+        ids, word_ids = [self.bpemb.BOS], [None]
         for i, w in enumerate(words):
             tmp = self.bpemb.encode_ids(w)
-            ids.extend([i] * len(tmp))
-            word_ids.extend(tmp)
+            word_ids.extend([i] * len(tmp))
+            ids.extend(tmp)
 
-        word_ids.append(self.bpemb.EOS)
-        ids.append(None)
+        ids.append(self.bpemb.EOS)
+        word_ids.append(None)
 
         return TokenizedSentence(word_ids, ids)
 
