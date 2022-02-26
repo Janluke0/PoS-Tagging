@@ -114,3 +114,7 @@ class BPEmbWrapper:
 
     def __getattr__(self, name):
         return getattr(self.bpemb, name)
+
+    @property
+    def vocab_size(self):
+        return self.bpemb.vs
